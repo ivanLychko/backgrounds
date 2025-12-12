@@ -1,0 +1,104 @@
+class SpiralBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.mouse = { x: 0.5, y: 0.5 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX / this.canvas.width;
+    this.mouse.y = e.clientY / this.canvas.height;
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.time += 0.01;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#0a0a14';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    const maxRadius = Math.min(this.canvas.width, this.canvas.height) * 0.4;
+    
+    // Mouse influence
+    const mouseX = this.mouse.x * this.canvas.width;
+    const mouseY = this.mouse.y * this.canvas.height;
+    
+    // Draw multiple spirals
+    for (let spiral = 0; spiral < 3; spiral++) {
+      const offset = spiral * Math.PI * 2 / 3;
+      this.ctx.beginPath();
+      
+      for (let angle = 0; angle < Math.PI * 8; angle += 0.1) {
+        const radius = (angle / (Math.PI * 8)) * maxRadius;
+        const x = centerX + Math.cos(angle + this.time + offset) * radius;
+        const y = centerY + Math.sin(angle + this.time + offset) * radius;
+        
+        // Mouse attraction
+        const dx = mouseX - x;
+        const dy = mouseY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        let finalX = x;
+        let finalY = y;
+        
+        if (dist < 100 && dist > 0) {
+          const force = (100 - dist) / 100;
+          finalX += (dx / dist) * force * 20;
+          finalY += (dy / dist) * force * 20;
+        }
+        
+        if (angle === 0) {
+          this.ctx.moveTo(finalX, finalY);
+        } else {
+          this.ctx.lineTo(finalX, finalY);
+        }
+      }
+      
+      const hue = (this.time * 50 + spiral * 120) % 360;
+      this.ctx.strokeStyle = `hsl(${hue}, 70%, 60%)`;
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default SpiralBackground;
+
+

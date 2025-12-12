@@ -1,0 +1,222 @@
+class RepairProcessBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.cracks = [];
+    this.repairZones = [];
+    this.mouse = { x: 0, y: 0 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+
+    this.createCracks();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createCracks();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  handleClick(e) {
+    this.startRepair(e.clientX, e.clientY);
+  }
+
+  handleMouseDown(e) {
+    this.isRepairing = true;
+    this.startRepair(e.clientX, e.clientY);
+  }
+
+  handleMouseUp(e) {
+    this.isRepairing = false;
+  }
+
+  startRepair(x, y) {
+    this.repairZones.push({
+      x,
+      y,
+      radius: 0,
+      maxRadius: 100,
+      life: 1,
+      progress: 0,
+    });
+  }
+
+  createCracks() {
+    this.cracks = [];
+    const count = 15;
+    for (let i = 0; i < count; i++) {
+      const startX = Math.random() * this.canvas.width;
+      const startY = Math.random() * this.canvas.height;
+      const points = [];
+      let x = startX;
+      let y = startY;
+
+      for (let j = 0; j < 20; j++) {
+        points.push({ x, y, repaired: false, repairProgress: 0 });
+        x += (Math.random() - 0.5) * 32;
+        y += Math.random() * 20 + 5;
+        if (y > this.canvas.height) break;
+      }
+
+      this.cracks.push({
+        points,
+        width: Math.random() * 3 + 1,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+
+    this.time += 0.01;
+
+    // Concrete background
+    this.ctx.fillStyle = '#4a4a4a';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Update repair zones
+    this.repairZones.forEach((zone, zIndex) => {
+      zone.radius += 1;
+      zone.progress += 0.02;
+      zone.life -= 0.005;
+
+      // Check which cracks are being repaired
+      this.cracks.forEach(crack => {
+        crack.points.forEach(point => {
+          const dx = zone.x - point.x;
+          const dy = zone.y - point.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < zone.radius) {
+            point.repairProgress = Math.min(1, point.repairProgress + 0.05);
+            if (point.repairProgress >= 1) {
+              point.repaired = true;
+            }
+          }
+        });
+      });
+
+      if (zone.life <= 0 || zone.radius > zone.maxRadius) {
+        this.repairZones.splice(zIndex, 1);
+      }
+    });
+
+    // Draw cracks
+    this.cracks.forEach(crack => {
+      // Draw unrepaired parts
+      this.ctx.strokeStyle = 'rgba(100, 100, 100, 0.7)';
+      this.ctx.lineWidth = crack.width;
+      this.ctx.lineCap = 'round';
+      this.ctx.beginPath();
+
+      crack.points.forEach((point, i) => {
+        const dx = this.mouse.x - point.x;
+        const dy = this.mouse.y - point.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        let x = point.x;
+        let y = point.y;
+
+        if (distance < 100) {
+          const force = (100 - distance) / 100;
+          x += (dx / distance) * force * 6;
+          y += (dy / distance) * force * 6;
+        }
+
+        if (!point.repaired) {
+          if (i === 0 || !crack.points[i - 1].repaired) {
+            if (i === 0) {
+              this.ctx.moveTo(x, y);
+            } else {
+              this.ctx.lineTo(x, y);
+            }
+          } else {
+            this.ctx.moveTo(x, y);
+          }
+        }
+      });
+
+      this.ctx.stroke();
+
+      // Draw repairing parts (with progress)
+      crack.points.forEach((point, i) => {
+        if (point.repairProgress > 0 && point.repairProgress < 1 && i > 0) {
+          const prevPoint = crack.points[i - 1];
+          if (prevPoint.repairProgress > 0) {
+            this.ctx.strokeStyle = `rgba(200, 180, 150, ${point.repairProgress * 0.8})`;
+            this.ctx.lineWidth = crack.width * 1.5;
+            this.ctx.beginPath();
+            this.ctx.moveTo(prevPoint.x, prevPoint.y);
+            this.ctx.lineTo(point.x, point.y);
+            this.ctx.stroke();
+          }
+        }
+      });
+
+      // Draw repaired parts
+      this.ctx.strokeStyle = 'rgba(200, 180, 150, 0.5)';
+      this.ctx.lineWidth = crack.width * 1.2;
+      this.ctx.beginPath();
+
+      let inRepaired = false;
+      crack.points.forEach((point, i) => {
+        if (point.repaired) {
+          if (!inRepaired) {
+            this.ctx.moveTo(point.x, point.y);
+            inRepaired = true;
+          } else {
+            this.ctx.lineTo(point.x, point.y);
+          }
+        } else {
+          if (inRepaired && i > 0 && crack.points[i - 1].repaired) {
+            this.ctx.stroke();
+            this.ctx.beginPath();
+          }
+          inRepaired = false;
+        }
+      });
+      if (inRepaired) {
+        this.ctx.stroke();
+      }
+    });
+
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+      this.canvas.removeEventListener('click', (e) => this.handleClick(e));
+      this.canvas.removeEventListener('mousedown', (e) => this.handleMouseDown(e));
+      this.canvas.removeEventListener('mouseup', (e) => this.handleMouseUp(e));
+    }
+  }
+}
+
+export default RepairProcessBackground;
+
+

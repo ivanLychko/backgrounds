@@ -1,0 +1,210 @@
+class HoleFillingBackground {
+    constructor(container) {
+        this.container = container;
+        this.canvas = null;
+        this.ctx = null;
+        this.holes = [];
+        this.fillZones = [];
+        this.mouse = { x: 0, y: 0 };
+        this.time = 0;
+        this.init();
+    }
+
+    init() {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.container.innerHTML = '';
+        this.container.appendChild(this.canvas);
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('click', (e) => this.handleClick(e));
+        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+
+        this.createHoles();
+        this.animate();
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.createHoles();
+    }
+
+    handleMouseMove(e) {
+        this.mouse.x = e.clientX;
+        this.mouse.y = e.clientY;
+    }
+
+    handleClick(e) {
+        this.startFill(e.clientX, e.clientY);
+    }
+
+    handleMouseDown(e) {
+        this.isFilling = true;
+        this.startFill(e.clientX, e.clientY);
+    }
+
+    handleMouseUp(e) {
+        this.isFilling = false;
+    }
+
+    startFill(x, y) {
+        this.fillZones.push({
+            x,
+            y,
+            radius: 0,
+            maxRadius: 90,
+            life: 1,
+            progress: 0,
+        });
+    }
+
+    createHoles() {
+        this.holes = [];
+        const count = 8; // Меньше дыр для аккуратности
+        for (let i = 0; i < count; i++) {
+            const size = Math.random() * 20 + 15; // Меньший размер
+            this.holes.push({
+                x: Math.random() * this.canvas.width,
+                y: Math.random() * this.canvas.height,
+                radius: size,
+                filled: false,
+                fillProgress: 0,
+                originalRadius: size,
+            });
+        }
+    }
+
+    animate() {
+        if (!this.canvas) return;
+
+        this.time += 0.01;
+
+        // Surface background
+        this.ctx.fillStyle = '#3a3a3a';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw surface texture (более аккуратно)
+        this.ctx.fillStyle = '#4a4a4a';
+        for (let i = 0; i < 40; i++) {
+            const x = (i * 37) % this.canvas.width;
+            const y = (i * 29) % this.canvas.height;
+            this.ctx.fillRect(x, y, 1, 1);
+        }
+
+        // Update fill zones
+        this.fillZones.forEach((zone, zIndex) => {
+            zone.radius += 1.5;
+            zone.progress += 0.03;
+            zone.life -= 0.004;
+
+            // Check which holes are being filled
+            this.holes.forEach(hole => {
+                const dx = zone.x - hole.x;
+                const dy = zone.y - hole.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < zone.radius + hole.radius) {
+                    hole.fillProgress = Math.min(1, hole.fillProgress + 0.08);
+                    if (hole.fillProgress >= 1) {
+                        hole.filled = true;
+                    }
+                }
+            });
+
+            if (zone.life <= 0 || zone.radius > zone.maxRadius) {
+                this.fillZones.splice(zIndex, 1);
+            }
+        });
+
+        // Draw holes
+        this.holes.forEach(hole => {
+            const dx = this.mouse.x - hole.x;
+            const dy = this.mouse.y - hole.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            let radius = hole.radius;
+            if (distance < 150 && !hole.filled) {
+                const force = (150 - distance) / 150;
+                radius += force * 5;
+            }
+
+            // Draw hole (dark inner part)
+            if (!hole.filled) {
+                this.ctx.fillStyle = '#1a1a1a';
+                this.ctx.beginPath();
+                this.ctx.arc(hole.x, hole.y, radius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Draw hole edge
+                this.ctx.strokeStyle = 'rgba(80, 80, 80, 0.8)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(hole.x, hole.y, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            // Draw filling progress
+            if (hole.fillProgress > 0 && hole.fillProgress < 1) {
+                const fillRadius = hole.originalRadius * hole.fillProgress;
+                const gradient = this.ctx.createRadialGradient(
+                    hole.x, hole.y, 0,
+                    hole.x, hole.y, fillRadius
+                );
+                gradient.addColorStop(0, `rgba(180, 160, 140, ${hole.fillProgress})`);
+                gradient.addColorStop(0.7, `rgba(160, 140, 120, ${hole.fillProgress * 0.8})`);
+                gradient.addColorStop(1, `rgba(140, 120, 100, 0)`);
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(hole.x, hole.y, fillRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+
+            // Draw filled hole
+            if (hole.filled) {
+                const gradient = this.ctx.createRadialGradient(
+                    hole.x, hole.y, 0,
+                    hole.x, hole.y, hole.originalRadius
+                );
+                gradient.addColorStop(0, 'rgba(200, 180, 160, 0.9)');
+                gradient.addColorStop(0.5, 'rgba(180, 160, 140, 0.7)');
+                gradient.addColorStop(1, 'rgba(160, 140, 120, 0.5)');
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(hole.x, hole.y, hole.originalRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                // Draw filled surface texture (более аккуратно)
+                this.ctx.fillStyle = 'rgba(200, 180, 160, 0.2)';
+                for (let i = 0; i < 2; i++) {
+                    const angle = (this.time + i * 3) * 0.3;
+                    const x = hole.x + Math.cos(angle) * (hole.originalRadius * 0.4);
+                    const y = hole.y + Math.sin(angle) * (hole.originalRadius * 0.4);
+                    this.ctx.fillRect(x, y, 1, 1);
+                }
+            }
+        });
+
+        this.animationFrame = requestAnimationFrame(() => this.animate());
+    }
+
+    destroy() {
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+        }
+        window.removeEventListener('resize', () => this.resize());
+        if (this.canvas) {
+            this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+            this.canvas.removeEventListener('click', (e) => this.handleClick(e));
+            this.canvas.removeEventListener('mousedown', (e) => this.handleMouseDown(e));
+            this.canvas.removeEventListener('mouseup', (e) => this.handleMouseUp(e));
+        }
+    }
+}
+
+export default HoleFillingBackground;
+

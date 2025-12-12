@@ -1,0 +1,114 @@
+class OrbsBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.orbs = [];
+    this.mouse = { x: 0, y: 0 };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createOrbs();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createOrbs();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createOrbs() {
+    this.orbs = [];
+    const count = 15;
+    for (let i = 0; i < count; i++) {
+      this.orbs.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        radius: Math.random() * 80 + 40,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        hue: Math.random() * 360,
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#0a0a14';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.orbs.forEach(orb => {
+      orb.x += orb.vx;
+      orb.y += orb.vy;
+      orb.pulse += 0.02;
+      
+      // Mouse interaction
+      const dx = this.mouse.x - orb.x;
+      const dy = this.mouse.y - orb.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 200) {
+        const force = (200 - distance) / 200;
+        orb.vx += (dx / distance) * force * 0.05;
+        orb.vy += (dy / distance) * force * 0.05;
+      }
+      
+      // Boundary
+      if (orb.x < orb.radius || orb.x > this.canvas.width - orb.radius) orb.vx *= -1;
+      if (orb.y < orb.radius || orb.y > this.canvas.height - orb.radius) orb.vy *= -1;
+      
+      orb.vx *= 0.99;
+      orb.vy *= 0.99;
+      
+      // Draw orb with pulse
+      const pulseRadius = orb.radius + Math.sin(orb.pulse) * 10;
+      const gradient = this.ctx.createRadialGradient(
+        orb.x, orb.y, 0,
+        orb.x, orb.y, pulseRadius
+      );
+      gradient.addColorStop(0, `hsla(${orb.hue}, 70%, 70%, 0.9)`);
+      gradient.addColorStop(0.5, `hsla(${orb.hue}, 70%, 60%, 0.6)`);
+      gradient.addColorStop(1, `hsla(${orb.hue}, 70%, 50%, 0)`);
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(orb.x, orb.y, pulseRadius, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default OrbsBackground;
+
+

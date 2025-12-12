@@ -1,0 +1,130 @@
+class Particles4Background {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createParticles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createParticles();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createParticles() {
+    this.particles = [];
+    const count = 80;
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 4 + 2,
+        hue: Math.random() * 360,
+        life: Math.random(),
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    // Полная очистка canvas и сброс всех настроек
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.globalAlpha = 1;
+    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.fillStyle = '#0a0a14';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.particles.forEach((particle, i) => {
+      // Mouse interaction
+      const dx = this.mouse.x - particle.x;
+      const dy = this.mouse.y - particle.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 150 && distance > 0) {
+        const force = (150 - distance) / 150;
+        particle.vx += (dx / distance) * force * 0.1;
+        particle.vy += (dy / distance) * force * 0.1;
+      }
+      
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.life += 0.01;
+      
+      // Boundary wrap
+      if (particle.x < 0) particle.x = this.canvas.width;
+      if (particle.x > this.canvas.width) particle.x = 0;
+      if (particle.y < 0) particle.y = this.canvas.height;
+      if (particle.y > this.canvas.height) particle.y = 0;
+      
+      particle.vx *= 0.99;
+      particle.vy *= 0.99;
+      
+      // Draw particle with pulse
+      const pulse = Math.sin(particle.life) * 0.3 + 0.7;
+      const size = particle.size * pulse;
+      const hue = (particle.hue + particle.life * 10) % 360;
+      
+      this.ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, size, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Draw connections
+      this.particles.slice(i + 1).forEach(other => {
+        const dx = other.x - particle.x;
+        const dy = other.y - particle.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist < 120) {
+          this.ctx.strokeStyle = `hsla(${(hue + other.hue) / 2}, 70%, 60%, ${0.3 * (1 - dist / 120)})`;
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(particle.x, particle.y);
+          this.ctx.lineTo(other.x, other.y);
+          this.ctx.stroke();
+        }
+      });
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default Particles4Background;
+
+

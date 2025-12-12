@@ -1,0 +1,124 @@
+class CloudsBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.clouds = [];
+    this.mouse = { x: 0.5, y: 0.5 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createClouds();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createClouds();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX / this.canvas.width;
+    this.mouse.y = e.clientY / this.canvas.height;
+  }
+
+  createClouds() {
+    this.clouds = [];
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      this.clouds.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        width: Math.random() * 200 + 100,
+        height: Math.random() * 100 + 50,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.3,
+        opacity: Math.random() * 0.3 + 0.2,
+      });
+    }
+  }
+
+  drawCloud(cloud) {
+    const mouseX = this.mouse.x * this.canvas.width;
+    const mouseY = this.mouse.y * this.canvas.height;
+    const dx = mouseX - cloud.x;
+    const dy = mouseY - cloud.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    let x = cloud.x;
+    let y = cloud.y;
+    
+    if (distance < 200) {
+      const force = (200 - distance) / 200;
+      x += (dx / distance) * force * 20;
+      y += (dy / distance) * force * 20;
+    }
+    
+    this.ctx.fillStyle = `rgba(255, 255, 255, ${cloud.opacity})`;
+    
+    // Draw cloud as multiple circles
+    for (let i = 0; i < 5; i++) {
+      const offsetX = (Math.random() - 0.5) * cloud.width * 0.5;
+      const offsetY = (Math.random() - 0.5) * cloud.height * 0.5;
+      const size = cloud.width * (0.3 + Math.random() * 0.4);
+      
+      this.ctx.beginPath();
+      this.ctx.arc(x + offsetX, y + offsetY, size / 2, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.time += 0.01;
+    
+    // Sky gradient
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+    gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(1, '#E0F6FF');
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.clouds.forEach(cloud => {
+      cloud.x += cloud.vx;
+      cloud.y += cloud.vy;
+      
+      // Wrap around
+      if (cloud.x < -cloud.width) cloud.x = this.canvas.width + cloud.width;
+      if (cloud.x > this.canvas.width + cloud.width) cloud.x = -cloud.width;
+      if (cloud.y < -cloud.height) cloud.y = this.canvas.height + cloud.height;
+      if (cloud.y > this.canvas.height + cloud.height) cloud.y = -cloud.height;
+      
+      this.drawCloud(cloud);
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default CloudsBackground;
+
+

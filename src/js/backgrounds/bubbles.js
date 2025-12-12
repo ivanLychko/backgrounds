@@ -1,0 +1,119 @@
+class BubblesBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.bubbles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createBubbles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createBubbles();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createBubbles() {
+    this.bubbles = [];
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+      this.bubbles.push({
+        x: Math.random() * this.canvas.width,
+        y: this.canvas.height + Math.random() * 100,
+        radius: Math.random() * 30 + 10,
+        speed: Math.random() * 1 + 0.5,
+        swing: Math.random() * Math.PI * 2,
+        swingSpeed: Math.random() * 0.02 + 0.01,
+        hue: Math.random() * 60 + 180,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#0a1428';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.bubbles.forEach(bubble => {
+      bubble.y -= bubble.speed;
+      bubble.swing += bubble.swingSpeed;
+      bubble.x += Math.sin(bubble.swing) * 1;
+      
+      // Mouse interaction
+      const dx = this.mouse.x - bubble.x;
+      const dy = this.mouse.y - bubble.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 100) {
+        const force = (100 - distance) / 100;
+        bubble.x += (dx / distance) * force * 2;
+        bubble.y += (dy / distance) * force * 2;
+      }
+      
+      if (bubble.y < -bubble.radius) {
+        bubble.y = this.canvas.height + bubble.radius;
+        bubble.x = Math.random() * this.canvas.width;
+      }
+      
+      // Draw bubble
+      const gradient = this.ctx.createRadialGradient(
+        bubble.x - bubble.radius * 0.3,
+        bubble.y - bubble.radius * 0.3,
+        0,
+        bubble.x, bubble.y, bubble.radius
+      );
+      gradient.addColorStop(0, `hsla(${bubble.hue}, 70%, 80%, 0.6)`);
+      gradient.addColorStop(0.5, `hsla(${bubble.hue}, 70%, 60%, 0.4)`);
+      gradient.addColorStop(1, `hsla(${bubble.hue}, 70%, 40%, 0.1)`);
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Highlight
+      this.ctx.fillStyle = `hsla(${bubble.hue}, 70%, 90%, 0.3)`;
+      this.ctx.beginPath();
+      this.ctx.arc(bubble.x - bubble.radius * 0.3, bubble.y - bubble.radius * 0.3, bubble.radius * 0.3, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default BubblesBackground;
+
+

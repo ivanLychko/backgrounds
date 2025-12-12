@@ -1,0 +1,228 @@
+class CrackSealingBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.cracks = [];
+    this.sealant = [];
+    this.mouse = { x: 0, y: 0 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    this.canvas.addEventListener('click', (e) => this.handleClick(e));
+    this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+    this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    
+    this.createCracks();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createCracks();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+    
+    // Continuous sealing while dragging
+    if (this.isSealing) {
+      this.addSealant(e.clientX, e.clientY);
+    }
+  }
+
+  handleClick(e) {
+    this.addSealant(e.clientX, e.clientY);
+  }
+
+  handleMouseDown(e) {
+    this.isSealing = true;
+    this.addSealant(e.clientX, e.clientY);
+  }
+
+  handleMouseUp(e) {
+    this.isSealing = false;
+  }
+
+  addSealant(x, y) {
+    this.sealant.push({
+      x,
+      y,
+      radius: 0,
+      maxRadius: 50,
+      life: 1,
+      speed: 1.2,
+    });
+  }
+
+  createCracks() {
+    this.cracks = [];
+    const count = 14;
+    for (let i = 0; i < count; i++) {
+      const startX = Math.random() * this.canvas.width;
+      const startY = Math.random() * this.canvas.height;
+      const points = [];
+      let x = startX;
+      let y = startY;
+      
+      for (let j = 0; j < 22; j++) {
+        points.push({ x, y, sealed: false });
+        x += (Math.random() - 0.5) * 28;
+        y += Math.random() * 19 + 4;
+        if (y > this.canvas.height) break;
+      }
+      
+      this.cracks.push({
+        points,
+        width: Math.random() * 3 + 1,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.time += 0.01;
+    
+    // Concrete background
+    this.ctx.fillStyle = '#4a4a4a';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Update sealant
+    this.sealant.forEach((seal, sIndex) => {
+      seal.radius += seal.speed;
+      seal.life -= 0.01;
+      
+      // Mark cracks as sealed
+      this.cracks.forEach(crack => {
+        crack.points.forEach(point => {
+          const dx = seal.x - point.x;
+          const dy = seal.y - point.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          if (distance < seal.radius) {
+            point.sealed = true;
+          }
+        });
+      });
+      
+      if (seal.life <= 0 || seal.radius > seal.maxRadius) {
+        this.sealant.splice(sIndex, 1);
+      } else {
+        // Draw sealant expanding
+        const gradient = this.ctx.createRadialGradient(
+          seal.x, seal.y, 0,
+          seal.x, seal.y, seal.radius
+        );
+        gradient.addColorStop(0, `rgba(200, 180, 150, ${seal.life * 0.9})`);
+        gradient.addColorStop(0.5, `rgba(180, 160, 130, ${seal.life * 0.7})`);
+        gradient.addColorStop(1, `rgba(150, 130, 100, 0)`);
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(seal.x, seal.y, seal.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Sealant center
+        this.ctx.fillStyle = `rgba(200, 180, 150, ${seal.life})`;
+        this.ctx.beginPath();
+        this.ctx.arc(seal.x, seal.y, 5, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    });
+    
+    // Draw cracks
+    this.cracks.forEach(crack => {
+      // Draw unsealed parts
+      this.ctx.strokeStyle = 'rgba(100, 100, 100, 0.7)';
+      this.ctx.lineWidth = crack.width;
+      this.ctx.lineCap = 'round';
+      this.ctx.beginPath();
+      
+      crack.points.forEach((point, i) => {
+        const dx = this.mouse.x - point.x;
+        const dy = this.mouse.y - point.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        let x = point.x;
+        let y = point.y;
+        
+        if (distance < 110) {
+          const force = (110 - distance) / 110;
+          x += (dx / distance) * force * 7;
+          y += (dy / distance) * force * 7;
+        }
+        
+        if (!point.sealed) {
+          if (i === 0 || !crack.points[i - 1].sealed) {
+            if (i === 0) {
+              this.ctx.moveTo(x, y);
+            } else {
+              this.ctx.lineTo(x, y);
+            }
+          } else {
+            this.ctx.moveTo(x, y);
+          }
+        }
+      });
+      
+      this.ctx.stroke();
+      
+      // Draw sealed parts (in repair color)
+      this.ctx.strokeStyle = 'rgba(200, 180, 150, 0.6)';
+      this.ctx.lineWidth = crack.width * 1.3;
+      this.ctx.beginPath();
+      
+      let inSealed = false;
+      crack.points.forEach((point, i) => {
+        if (point.sealed) {
+          if (!inSealed) {
+            this.ctx.moveTo(point.x, point.y);
+            inSealed = true;
+          } else {
+            this.ctx.lineTo(point.x, point.y);
+          }
+        } else {
+          if (inSealed && i > 0 && crack.points[i - 1].sealed) {
+            this.ctx.stroke();
+            this.ctx.beginPath();
+          }
+          inSealed = false;
+        }
+      });
+      if (inSealed) {
+        this.ctx.stroke();
+      }
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+      this.canvas.removeEventListener('click', (e) => this.handleClick(e));
+      this.canvas.removeEventListener('mousedown', (e) => this.handleMouseDown(e));
+      this.canvas.removeEventListener('mouseup', (e) => this.handleMouseUp(e));
+    }
+  }
+}
+
+export default CrackSealingBackground;
+
+

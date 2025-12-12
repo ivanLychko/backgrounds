@@ -1,0 +1,147 @@
+class ParticleBackground {
+  constructor(container, settings = {}) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.settings = {
+      particleCount: settings.particleCount || 100,
+      connectionDistance: settings.connectionDistance || 120,
+      mouseInteraction: settings.mouseInteraction || 150,
+      particleSpeed: settings.particleSpeed || 0.5,
+      particleSize: settings.particleSize || 1.5,
+      backgroundColor: settings.backgroundColor || '#0a0a14',
+    };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createParticles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createParticles() {
+    const particleCount = this.settings.particleCount;
+    this.particles = [];
+    
+    for (let i = 0; i < particleCount; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        vx: (Math.random() - 0.5) * this.settings.particleSpeed,
+        vy: (Math.random() - 0.5) * this.settings.particleSpeed,
+        radius: Math.random() * this.settings.particleSize + this.settings.particleSize * 0.5,
+        color: `hsl(${Math.random() * 60 + 180}, 70%, ${Math.random() * 30 + 50}%)`,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    // Полная очистка canvas и сброс всех настроек
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.globalAlpha = 1;
+    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.fillStyle = this.settings.backgroundColor;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.particles.forEach((particle, i) => {
+      // Update position
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      
+      // Mouse interaction
+      const dx = this.mouse.x - particle.x;
+      const dy = this.mouse.y - particle.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < this.settings.mouseInteraction) {
+        const force = (this.settings.mouseInteraction - distance) / this.settings.mouseInteraction;
+        particle.vx -= (dx / distance) * force * 0.02;
+        particle.vy -= (dy / distance) * force * 0.02;
+      }
+      
+      // Boundary check
+      if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
+      if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+      
+      // Draw particle
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+      this.ctx.fillStyle = particle.color;
+      this.ctx.fill();
+      
+      // Draw connections
+      this.particles.slice(i + 1).forEach(other => {
+        const dx = other.x - particle.x;
+        const dy = other.y - particle.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < this.settings.connectionDistance) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(particle.x, particle.y);
+          this.ctx.lineTo(other.x, other.y);
+          this.ctx.strokeStyle = `rgba(100, 200, 255, ${1 - distance / this.settings.connectionDistance})`;
+          this.ctx.lineWidth = 0.5;
+          this.ctx.stroke();
+        }
+      });
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  updateSetting(key, value) {
+    this.settings[key] = value;
+    
+    if (key === 'particleCount') {
+      this.createParticles();
+    } else if (key === 'particleSpeed') {
+      this.particles.forEach(particle => {
+        const speed = Math.sqrt(particle.vx * particle.vx + particle.vy * particle.vy);
+        if (speed > 0) {
+          particle.vx = (particle.vx / speed) * this.settings.particleSpeed;
+          particle.vy = (particle.vy / speed) * this.settings.particleSpeed;
+        }
+      });
+    } else if (key === 'particleSize') {
+      this.particles.forEach(particle => {
+        particle.radius = Math.random() * this.settings.particleSize + this.settings.particleSize * 0.5;
+      });
+    }
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default ParticleBackground;
+

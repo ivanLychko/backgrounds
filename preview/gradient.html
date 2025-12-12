@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Градиент - Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    #background-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="background-container"></div>
+  
+  <script>
+    (function(){
+      'use strict';
+      class GradientBackground{constructor(container){this.container=container;this.canvas=null;this.ctx=null;this.gradients=[];this.mouse={x:0.5,y:0.5};this.time=0;this.init()}init(){this.canvas=document.createElement('canvas');this.ctx=this.canvas.getContext('2d');this.container.innerHTML='';this.container.appendChild(this.canvas);this.resize();window.addEventListener('resize',()=>this.resize());this.canvas.addEventListener('mousemove',(e)=>this.handleMouseMove(e));this.createGradients();this.animate()}resize(){this.canvas.width=window.innerWidth;this.canvas.height=window.innerHeight}handleMouseMove(e){this.mouse.x=e.clientX/this.canvas.width;this.mouse.y=e.clientY/this.canvas.height}createGradients(){this.gradients=[{color1:{h:240,s:100,l:50},color2:{h:300,s:100,l:50},speed:0.5,},{color1:{h:180,s:100,l:50},color2:{h:240,s:100,l:50},speed:0.3,},{color1:{h:0,s:100,l:50},color2:{h:60,s:100,l:50},speed:0.4,},]}animate(){if(!this.canvas)return;this.time+=0.01;const centerX=this.mouse.x*this.canvas.width;const centerY=this.mouse.y*this.canvas.height;const radius=Math.max(this.canvas.width,this.canvas.height)*1.5;this.gradients.forEach((grad,index)=>{const offset=this.time*grad.speed+index*Math.PI/3;const h1=(grad.color1.h+Math.sin(offset)*30)% 360;const h2=(grad.color2.h+Math.cos(offset)*30)% 360;const gradient=this.ctx.createRadialGradient(centerX,centerY,0,centerX,centerY,radius);gradient.addColorStop(0,`hsla(${h1},${grad.color1.s}%,${grad.color1.l}%,0.8)`);gradient.addColorStop(0.5,`hsla(${h2},${grad.color2.s}%,${grad.color2.l}%,0.6)`);gradient.addColorStop(1,`hsla(${(h1+h2)/2},80%,30%,0.4)`);this.ctx.fillStyle=gradient;this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height)});this.ctx.fillStyle='rgba(255,255,255,0.1)';for(let i=0;i<20;i++){const x=(Math.sin(this.time+i)*0.5+0.5)*this.canvas.width;const y=(Math.cos(this.time*0.7+i)*0.5+0.5)*this.canvas.height;const size=Math.sin(this.time+i)*3+5;this.ctx.beginPath();this.ctx.arc(x,y,size,0,Math.PI*2);this.ctx.fill()}this.animationFrame=requestAnimationFrame(()=>this.animate())}destroy(){if(this.animationFrame){cancelAnimationFrame(this.animationFrame)}window.removeEventListener('resize',()=>this.resize());if(this.canvas){this.canvas.removeEventListener('mousemove',(e)=>this.handleMouseMove(e))}}}GradientBackground;
+      
+      const container = document.getElementById('background-container');
+      if (container) {
+        const bg = new GradientBackground(container);
+        window.addEventListener('beforeunload', function() {
+          if (bg && bg.destroy) bg.destroy();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

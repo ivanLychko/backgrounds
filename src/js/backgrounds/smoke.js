@@ -1,0 +1,121 @@
+class SmokeBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createParticles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createParticles() {
+    this.particles = [];
+    const count = 30;
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: this.canvas.height + Math.random() * 100,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: -Math.random() * 0.5 - 0.3,
+        size: Math.random() * 30 + 20,
+        life: Math.random(),
+        lifeSpeed: Math.random() * 0.005 + 0.002,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#14141e';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.particles.forEach((particle, index) => {
+      particle.x += particle.vx;
+      particle.y += particle.vy;
+      particle.life -= particle.lifeSpeed;
+      particle.size += 0.2;
+      
+      // Mouse interaction
+      const dx = this.mouse.x - particle.x;
+      const dy = this.mouse.y - particle.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < 150) {
+        const force = (150 - distance) / 150;
+        particle.vx += (dx / distance) * force * 0.05;
+        particle.vy += (dy / distance) * force * 0.05;
+      }
+      
+      // Turbulence
+      particle.vx += (Math.random() - 0.5) * 0.1;
+      particle.vy += (Math.random() - 0.5) * 0.1;
+      
+      // Damping
+      particle.vx *= 0.98;
+      particle.vy *= 0.98;
+      
+      if (particle.life <= 0 || particle.y < -particle.size) {
+        particle.x = Math.random() * this.canvas.width;
+        particle.y = this.canvas.height + Math.random() * 100;
+        particle.life = 1;
+        particle.size = Math.random() * 30 + 20;
+      }
+      
+      // Draw smoke
+      const gradient = this.ctx.createRadialGradient(
+        particle.x, particle.y, 0,
+        particle.x, particle.y, particle.size
+      );
+      gradient.addColorStop(0, `rgba(150, 150, 150, ${particle.life * 0.3})`);
+      gradient.addColorStop(0.5, `rgba(100, 100, 100, ${particle.life * 0.2})`);
+      gradient.addColorStop(1, `rgba(50, 50, 50, 0)`);
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default SmokeBackground;
+
+

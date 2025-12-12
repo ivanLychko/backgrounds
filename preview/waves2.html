@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Волны 2 - Preview</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #background-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    #background-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="background-container"></div>
+  
+  <script>
+    (function(){
+      'use strict';
+      class Waves2Background{constructor(container){this.container=container;this.canvas=null;this.ctx=null;this.mouse={x:0.5,y:0.5};this.time=0;this.init()}init(){this.canvas=document.createElement('canvas');this.ctx=this.canvas.getContext('2d');this.container.innerHTML='';this.container.appendChild(this.canvas);this.resize();window.addEventListener('resize',()=>this.resize());this.canvas.addEventListener('mousemove',(e)=>this.handleMouseMove(e));this.animate()}resize(){this.canvas.width=window.innerWidth;this.canvas.height=window.innerHeight}handleMouseMove(e){this.mouse.x=e.clientX/this.canvas.width;this.mouse.y=e.clientY/this.canvas.height}animate(){if(!this.canvas)return;this.time+=0.01;const gradient=this.ctx.createLinearGradient(0,0,0,this.canvas.height);gradient.addColorStop(0,'#0a0a2e');gradient.addColorStop(1,'#16213e');this.ctx.fillStyle=gradient;this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);for(let layer=0;layer<4;layer++){const offset=layer*0.3;const yBase=this.canvas.height*(0.4+offset*0.15);const mouseY=this.mouse.y*this.canvas.height;const y=yBase+(mouseY-yBase)*0.2;this.ctx.beginPath();this.ctx.moveTo(0,y);for(let x=0;x<this.canvas.width;x+=2){const wave1=Math.sin(x*0.01+this.time+offset)*40;const wave2=Math.sin(x*0.005+this.time*0.5+offset)*20;const mouseWave=(this.mouse.x-x/this.canvas.width)*30;const height=wave1+wave2+mouseWave;this.ctx.lineTo(x,y+height)}this.ctx.lineTo(this.canvas.width,this.canvas.height);this.ctx.lineTo(0,this.canvas.height);this.ctx.closePath();const hue=200+layer*20+Math.sin(this.time+offset)*10;const gradient=this.ctx.createLinearGradient(0,y,0,this.canvas.height);gradient.addColorStop(0,`hsla(${hue},80%,60%,0.7)`);gradient.addColorStop(0.5,`hsla(${hue+20},70%,50%,0.5)`);gradient.addColorStop(1,`hsla(${hue},60%,40%,0)`);this.ctx.fillStyle=gradient;this.ctx.fill()}this.animationFrame=requestAnimationFrame(()=>this.animate())}destroy(){if(this.animationFrame){cancelAnimationFrame(this.animationFrame)}window.removeEventListener('resize',()=>this.resize());if(this.canvas){this.canvas.removeEventListener('mousemove',(e)=>this.handleMouseMove(e))}}}Waves2Background;
+      
+      const container = document.getElementById('background-container');
+      if (container) {
+        const bg = new Waves2Background(container);
+        window.addEventListener('beforeunload', function() {
+          if (bg && bg.destroy) bg.destroy();
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

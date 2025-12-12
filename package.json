@@ -1,0 +1,25 @@
+{
+  "name": "background-js",
+  "version": "1.0.0",
+  "description": "Interactive background playground",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack serve --mode development --open",
+    "watch": "webpack --mode development --watch"
+  },
+  "keywords": ["background", "interactive", "canvas"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "css-loader": "^6.11.0",
+    "html-webpack-plugin": "^5.6.0",
+    "sass": "^1.80.0",
+    "sass-loader": "^16.0.0",
+    "style-loader": "^3.3.4",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0"
+  }
+}
+

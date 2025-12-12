@@ -1,0 +1,122 @@
+class Particles3Background {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+
+    this.createParticles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createParticles();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createParticles() {
+    this.particles = [];
+    const count = 120;
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        z: Math.random() * 1000,
+        size: Math.random() * 3 + 1,
+        speed: Math.random() * 2 + 1,
+        hue: Math.random() * 360,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+
+    this.time += 0.01;
+
+    // Полная очистка canvas и сброс всех настроек
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.globalAlpha = 1;
+    this.ctx.globalCompositeOperation = 'source-over';
+    this.ctx.fillStyle = '#0a0a14';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+
+    this.particles.forEach(particle => {
+      particle.z -= particle.speed;
+
+      if (particle.z <= 0) {
+        particle.z = 1000;
+        particle.x = Math.random() * this.canvas.width;
+        particle.y = Math.random() * this.canvas.height;
+      }
+
+      const k = 128 / particle.z;
+      const px = particle.x * k + centerX;
+      const py = particle.y * k + centerY;
+
+      if (px >= 0 && px <= this.canvas.width && py >= 0 && py <= this.canvas.height) {
+        const size = particle.size * k;
+        const hue = (particle.hue + this.time * 50) % 360;
+
+        // Mouse interaction
+        const dx = this.mouse.x - px;
+        const dy = this.mouse.y - py;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 100) {
+          const force = (100 - distance) / 100;
+          this.ctx.strokeStyle = `hsla(${hue}, 70%, 60%, ${force * 0.5})`;
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(px, py);
+          this.ctx.lineTo(this.mouse.x, this.mouse.y);
+          this.ctx.stroke();
+        }
+
+        this.ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+        this.ctx.beginPath();
+        this.ctx.arc(px, py, size, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    });
+
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default Particles3Background;
+
+

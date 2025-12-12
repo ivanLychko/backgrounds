@@ -1,0 +1,316 @@
+class LiquidFillBackground {
+    constructor(container) {
+        this.container = container;
+        this.canvas = null;
+        this.ctx = null;
+        this.cavities = [];
+        this.fillZones = [];
+        this.liquidParticles = [];
+        this.mouse = { x: 0, y: 0 };
+        this.time = 0;
+        this.init();
+    }
+
+    init() {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.container.innerHTML = '';
+        this.container.appendChild(this.canvas);
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        this.canvas.addEventListener('click', (e) => this.handleClick(e));
+        this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        this.canvas.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+
+        this.createCavities();
+        this.animate();
+    }
+
+    resize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.createCavities();
+    }
+
+    handleMouseMove(e) {
+        this.mouse.x = e.clientX;
+        this.mouse.y = e.clientY;
+    }
+
+    handleClick(e) {
+        this.startFill(e.clientX, e.clientY);
+    }
+
+    handleMouseDown(e) {
+        this.isFilling = true;
+        this.startFill(e.clientX, e.clientY);
+    }
+
+    handleMouseUp(e) {
+        this.isFilling = false;
+    }
+
+    startFill(x, y) {
+        this.fillZones.push({
+            x,
+            y,
+            radius: 0,
+            maxRadius: 95,
+            life: 1,
+            progress: 0,
+        });
+
+        // Create liquid particles (меньше для аккуратности)
+        for (let i = 0; i < 5; i++) {
+            this.liquidParticles.push({
+                x: x + (Math.random() - 0.5) * 30,
+                y: y + (Math.random() - 0.5) * 30,
+                vx: (Math.random() - 0.5) * 2,
+                vy: (Math.random() - 0.5) * 2,
+                size: Math.random() * 4 + 2,
+                life: 1,
+                targetX: x,
+                targetY: y,
+            });
+        }
+    }
+
+    createCavities() {
+        this.cavities = [];
+        const count = 6; // Меньше полостей
+        for (let i = 0; i < count; i++) {
+            const points = [];
+            const centerX = Math.random() * this.canvas.width;
+            const centerY = Math.random() * this.canvas.height;
+            const numPoints = Math.floor(Math.random() * 5 + 6); // 6-10 точек для более аккуратной формы
+            const baseRadius = Math.random() * 30 + 25; // Меньший размер
+
+            for (let j = 0; j < numPoints; j++) {
+                const angle = (j / numPoints) * Math.PI * 2;
+                const radius = baseRadius + (Math.random() - 0.5) * 10; // Меньшее отклонение
+                points.push({
+                    x: centerX + Math.cos(angle) * radius,
+                    y: centerY + Math.sin(angle) * radius,
+                    filled: false,
+                    fillProgress: 0,
+                });
+            }
+
+            this.cavities.push({
+                points,
+                centerX,
+                centerY,
+                baseRadius,
+                liquidLevel: 0,
+            });
+        }
+    }
+
+    animate() {
+        if (!this.canvas) return;
+
+        this.time += 0.01;
+
+        // Surface background
+        this.ctx.fillStyle = '#5a5a5a';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Surface texture (более аккуратно)
+        this.ctx.fillStyle = '#4a4a4a';
+        for (let i = 0; i < 45; i++) {
+            const x = (i * 31) % this.canvas.width;
+            const y = (i * 29) % this.canvas.height;
+            this.ctx.fillRect(x, y, 1, 1);
+        }
+
+        // Update fill zones
+        this.fillZones.forEach((zone, zIndex) => {
+            zone.radius += 1.3;
+            zone.progress += 0.028;
+            zone.life -= 0.005;
+
+            // Check which cavities are being filled
+            this.cavities.forEach(cavity => {
+                const dx = zone.x - cavity.centerX;
+                const dy = zone.y - cavity.centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < zone.radius + cavity.baseRadius) {
+                    cavity.liquidLevel = Math.min(1, cavity.liquidLevel + 0.05);
+                    if (cavity.liquidLevel >= 1) {
+                        cavity.points.forEach(point => {
+                            point.fillProgress = Math.min(1, point.fillProgress + 0.02);
+                            if (point.fillProgress >= 1) {
+                                point.filled = true;
+                            }
+                        });
+                    }
+                }
+            });
+
+            if (zone.life <= 0 || zone.radius > zone.maxRadius) {
+                this.fillZones.splice(zIndex, 1);
+            }
+        });
+
+        // Update liquid particles
+        this.liquidParticles.forEach((particle, index) => {
+            const dx = particle.targetX - particle.x;
+            const dy = particle.targetY - particle.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance > 10) {
+                particle.vx += (dx / distance) * 0.15;
+                particle.vy += (dy / distance) * 0.15;
+            }
+
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life -= 0.015;
+            particle.vx *= 0.96;
+            particle.vy *= 0.96;
+
+            if (particle.life <= 0) {
+                this.liquidParticles.splice(index, 1);
+            } else {
+                // Draw liquid particle
+                this.ctx.fillStyle = `rgba(100, 150, 200, ${particle.life * 0.7})`;
+                this.ctx.beginPath();
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
+        });
+
+        // Draw cavities
+        this.cavities.forEach(cavity => {
+            const dx = this.mouse.x - cavity.centerX;
+            const dy = this.mouse.y - cavity.centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            let scale = 1;
+            if (distance < 130 && cavity.liquidLevel < 1) {
+                scale = 1 + (130 - distance) / 130 * 0.15;
+            }
+
+            // Draw cavity (empty space)
+            if (cavity.liquidLevel < 1) {
+                this.ctx.fillStyle = '#2a2a2a';
+                this.ctx.beginPath();
+                cavity.points.forEach((point, i) => {
+                    const x = cavity.centerX + (point.x - cavity.centerX) * scale;
+                    const y = cavity.centerY + (point.y - cavity.centerY) * scale;
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Draw cavity edge
+                this.ctx.strokeStyle = 'rgba(100, 100, 100, 0.6)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                cavity.points.forEach((point, i) => {
+                    const x = cavity.centerX + (point.x - cavity.centerX) * scale;
+                    const y = cavity.centerY + (point.y - cavity.centerY) * scale;
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+                this.ctx.closePath();
+                this.ctx.stroke();
+            }
+
+            // Draw liquid filling
+            if (cavity.liquidLevel > 0) {
+                const liquidHeight = cavity.baseRadius * 2 * cavity.liquidLevel;
+                const minY = Math.min(...cavity.points.map(p => p.y));
+                const liquidY = minY + (cavity.baseRadius * 2) - liquidHeight;
+
+                // Draw liquid surface with waves
+                this.ctx.fillStyle = `rgba(80, 140, 220, ${0.7 + cavity.liquidLevel * 0.3})`;
+                this.ctx.beginPath();
+                cavity.points.forEach((point, i) => {
+                    const x = cavity.centerX + (point.x - cavity.centerX) * scale;
+                    let y = cavity.centerY + (point.y - cavity.centerY) * scale;
+
+                    // Only draw points below liquid level
+                    if (y >= liquidY) {
+                        y = liquidY + Math.sin(this.time * 2 + i) * 2;
+                    } else {
+                        y = cavity.centerY + (point.y - cavity.centerY) * scale;
+                    }
+
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                });
+                this.ctx.closePath();
+                this.ctx.fill();
+
+                // Draw liquid highlights
+                if (cavity.liquidLevel > 0.3) {
+                    this.ctx.fillStyle = `rgba(120, 170, 240, ${(cavity.liquidLevel - 0.3) * 0.5})`;
+                    this.ctx.beginPath();
+                    this.ctx.ellipse(
+                        cavity.centerX,
+                        liquidY - 5,
+                        cavity.baseRadius * 0.6,
+                        cavity.baseRadius * 0.3,
+                        0, 0, Math.PI * 2
+                    );
+                    this.ctx.fill();
+                }
+            }
+
+            // Draw filled cavity
+            if (cavity.points.every(p => p.filled)) {
+                const gradient = this.ctx.createRadialGradient(
+                    cavity.centerX, cavity.centerY, 0,
+                    cavity.centerX, cavity.centerY, cavity.baseRadius
+                );
+                gradient.addColorStop(0, 'rgba(100, 150, 200, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(80, 130, 180, 0.7)');
+                gradient.addColorStop(1, 'rgba(60, 110, 160, 0.5)');
+
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                cavity.points.forEach((point, i) => {
+                    if (i === 0) {
+                        this.ctx.moveTo(point.x, point.y);
+                    } else {
+                        this.ctx.lineTo(point.x, point.y);
+                    }
+                });
+                this.ctx.closePath();
+                this.ctx.fill();
+            }
+        });
+
+        this.animationFrame = requestAnimationFrame(() => this.animate());
+    }
+
+    destroy() {
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+        }
+        window.removeEventListener('resize', () => this.resize());
+        if (this.canvas) {
+            this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+            this.canvas.removeEventListener('click', (e) => this.handleClick(e));
+            this.canvas.removeEventListener('mousedown', (e) => this.handleMouseDown(e));
+            this.canvas.removeEventListener('mouseup', (e) => this.handleMouseUp(e));
+        }
+    }
+}
+
+export default LiquidFillBackground;
+

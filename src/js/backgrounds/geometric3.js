@@ -1,0 +1,125 @@
+class Geometric3Background {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.shapes = [];
+    this.mouse = { x: 0, y: 0 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createShapes();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createShapes();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createShapes() {
+    this.shapes = [];
+    const count = 15;
+    for (let i = 0; i < count; i++) {
+      this.shapes.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        size: Math.random() * 80 + 40,
+        rotation: Math.random() * Math.PI * 2,
+        rotationSpeed: (Math.random() - 0.5) * 0.03,
+        hue: Math.random() * 360,
+        sides: 3 + Math.floor(Math.random() * 5),
+        pulse: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  drawShape(shape) {
+    this.ctx.save();
+    this.ctx.translate(shape.x, shape.y);
+    this.ctx.rotate(shape.rotation);
+    
+    // Mouse interaction
+    const dx = this.mouse.x - shape.x;
+    const dy = this.mouse.y - shape.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    const pulse = Math.sin(shape.pulse) * 0.2 + 0.8;
+    const scale = distance < 150 ? (1 + (1 - distance / 150) * 0.5) * pulse : pulse;
+    this.ctx.scale(scale, scale);
+    
+    this.ctx.beginPath();
+    for (let i = 0; i < shape.sides; i++) {
+      const angle = (Math.PI * 2 / shape.sides) * i;
+      const x = Math.cos(angle) * shape.size;
+      const y = Math.sin(angle) * shape.size;
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
+      } else {
+        this.ctx.lineTo(x, y);
+      }
+    }
+    this.ctx.closePath();
+    
+    const gradient = this.ctx.createRadialGradient(0, 0, 0, 0, 0, shape.size);
+    gradient.addColorStop(0, `hsla(${shape.hue}, 70%, 70%, 0.8)`);
+    gradient.addColorStop(1, `hsla(${shape.hue}, 70%, 50%, 0.4)`);
+    
+    this.ctx.fillStyle = gradient;
+    this.ctx.fill();
+    this.ctx.strokeStyle = `hsla(${shape.hue}, 70%, 80%, 0.8)`;
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+    
+    this.ctx.restore();
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.time += 0.01;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#0a0a14';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.shapes.forEach(shape => {
+      shape.rotation += shape.rotationSpeed;
+      shape.pulse += 0.02;
+      shape.hue = (shape.hue + 0.5) % 360;
+      this.drawShape(shape);
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default Geometric3Background;
+
+

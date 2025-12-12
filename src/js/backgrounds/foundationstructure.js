@@ -1,0 +1,118 @@
+class FoundationStructureBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.beams = [];
+    this.mouse = { x: 0, y: 0 };
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.createBeams();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createBeams();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createBeams() {
+    this.beams = [];
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      this.beams.push({
+        x1: Math.random() * this.canvas.width,
+        y1: Math.random() * this.canvas.height,
+        x2: Math.random() * this.canvas.width,
+        y2: Math.random() * this.canvas.height,
+        width: Math.random() * 4 + 2,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.ctx.fillStyle = '#2a2a2a';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.beams.forEach(beam => {
+      // Mouse interaction
+      const dx1 = this.mouse.x - beam.x1;
+      const dy1 = this.mouse.y - beam.y1;
+      const dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+      
+      let x1 = beam.x1;
+      let y1 = beam.y1;
+      let x2 = beam.x2;
+      let y2 = beam.y2;
+      
+      if (dist1 < 120) {
+        const force = (120 - dist1) / 120;
+        x1 += (dx1 / dist1) * force * 3;
+        y1 += (dy1 / dist1) * force * 3;
+      }
+      
+      const dx2 = this.mouse.x - beam.x2;
+      const dy2 = this.mouse.y - beam.y2;
+      const dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+      
+      if (dist2 < 120) {
+        const force = (120 - dist2) / 120;
+        x2 += (dx2 / dist2) * force * 3;
+        y2 += (dy2 / dist2) * force * 3;
+      }
+      
+      // Draw structural beam
+      this.ctx.strokeStyle = 'rgba(140, 140, 140, 0.7)';
+      this.ctx.lineWidth = beam.width;
+      this.ctx.lineCap = 'round';
+      this.ctx.beginPath();
+      this.ctx.moveTo(x1, y1);
+      this.ctx.lineTo(x2, y2);
+      this.ctx.stroke();
+      
+      // Beam joints
+      this.ctx.fillStyle = 'rgba(160, 160, 160, 0.9)';
+      this.ctx.beginPath();
+      this.ctx.arc(x1, y1, 4, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.beginPath();
+      this.ctx.arc(x2, y2, 4, 0, Math.PI * 2);
+      this.ctx.fill();
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default FoundationStructureBackground;
+
+

@@ -1,0 +1,74 @@
+class MatrixBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.columns = [];
+    this.fontSize = 14;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.columns = [];
+    const columnCount = Math.floor(this.canvas.width / this.fontSize);
+    
+    for (let i = 0; i < columnCount; i++) {
+      this.columns[i] = {
+        y: Math.random() * -1000,
+        speed: Math.random() * 2 + 1,
+      };
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    this.ctx.fillStyle = '#0F0';
+    this.ctx.font = `${this.fontSize}px monospace`;
+    
+    this.columns.forEach((column, i) => {
+      const x = i * this.fontSize;
+      const char = String.fromCharCode(0x30A0 + Math.random() * 96);
+      
+      this.ctx.fillStyle = `rgba(0, 255, 0, ${Math.random() * 0.5 + 0.5})`;
+      this.ctx.fillText(char, x, column.y);
+      
+      if (column.y > this.canvas.height && Math.random() > 0.975) {
+        column.y = 0;
+      } else {
+        column.y += column.speed;
+      }
+    });
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+  }
+}
+
+export default MatrixBackground;
+
+

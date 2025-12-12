@@ -1,0 +1,102 @@
+class AuroraBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.mouse = { x: 0.5, y: 0.5 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+    
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+    
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX / this.canvas.width;
+    this.mouse.y = e.clientY / this.canvas.height;
+  }
+
+  animate() {
+    if (!this.canvas) return;
+    
+    this.time += 0.01;
+    
+    // Dark background
+    this.ctx.fillStyle = '#000020';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Draw aurora bands
+    for (let band = 0; band < 5; band++) {
+      const offset = band * 0.2;
+      const yBase = this.canvas.height * (0.3 + offset * 0.1);
+      const mouseY = this.mouse.y * this.canvas.height;
+      const y = yBase + (mouseY - yBase) * 0.3;
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      
+      for (let x = 0; x < this.canvas.width; x += 2) {
+        const wave = Math.sin(x * 0.01 + this.time + offset) * 30;
+        const mouseWave = (this.mouse.x - x / this.canvas.width) * 50;
+        const height = wave + mouseWave + Math.sin(x * 0.005) * 20;
+        
+        this.ctx.lineTo(x, y + height);
+      }
+      
+      this.ctx.lineTo(this.canvas.width, this.canvas.height);
+      this.ctx.lineTo(0, this.canvas.height);
+      this.ctx.closePath();
+      
+      const hue = 180 + band * 20 + Math.sin(this.time + offset) * 10;
+      const gradient = this.ctx.createLinearGradient(0, y, 0, this.canvas.height);
+      gradient.addColorStop(0, `hsla(${hue}, 80%, 60%, 0.8)`);
+      gradient.addColorStop(0.5, `hsla(${hue + 20}, 70%, 50%, 0.6)`);
+      gradient.addColorStop(1, `hsla(${hue}, 60%, 40%, 0)`);
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.fill();
+    }
+    
+    // Stars
+    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for (let i = 0; i < 150; i++) {
+      const x = (Math.sin(this.time * 0.5 + i) * 0.5 + 0.5) * this.canvas.width;
+      const y = (Math.cos(this.time * 0.3 + i * 0.7) * 0.5 + 0.5) * this.canvas.height;
+      const size = Math.sin(this.time + i) * 1.5 + 1.5;
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, size, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+    
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default AuroraBackground;
+
+

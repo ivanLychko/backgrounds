@@ -1,0 +1,133 @@
+class QuantumBackground {
+  constructor(container) {
+    this.container = container;
+    this.canvas = null;
+    this.ctx = null;
+    this.particles = [];
+    this.mouse = { x: 0, y: 0 };
+    this.time = 0;
+    this.init();
+  }
+
+  init() {
+    this.canvas = document.createElement('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+
+    this.createParticles();
+    this.animate();
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.createParticles();
+  }
+
+  handleMouseMove(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
+
+  createParticles() {
+    this.particles = [];
+    const count = 100;
+    for (let i = 0; i < count; i++) {
+      this.particles.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 3 + 1,
+        hue: Math.random() * 360,
+        quantum: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  animate() {
+    if (!this.canvas) return;
+
+    this.time += 0.01;
+
+    // Полная очистка canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = '#00000a';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    this.particles.forEach((particle, i) => {
+      // Quantum uncertainty
+      particle.quantum += 0.1;
+      const uncertainty = Math.sin(particle.quantum) * 2;
+
+      particle.x += particle.vx + uncertainty;
+      particle.y += particle.vy + uncertainty;
+
+      // Mouse interaction
+      const dx = this.mouse.x - particle.x;
+      const dy = this.mouse.y - particle.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < 150) {
+        const force = (150 - distance) / 150;
+        particle.vx += (dx / distance) * force * 0.05;
+        particle.vy += (dy / distance) * force * 0.05;
+      }
+
+      // Boundary wrap
+      if (particle.x < 0) particle.x = this.canvas.width;
+      if (particle.x > this.canvas.width) particle.x = 0;
+      if (particle.y < 0) particle.y = this.canvas.height;
+      if (particle.y > this.canvas.height) particle.y = 0;
+
+      particle.vx *= 0.99;
+      particle.vy *= 0.99;
+
+      // Draw particle with wave function
+      const wave = Math.sin(this.time * 5 + particle.quantum);
+      const alpha = (wave + 1) / 2;
+
+      this.ctx.fillStyle = `hsla(${particle.hue}, 70%, 60%, ${alpha})`;
+      this.ctx.beginPath();
+      this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Draw connections (entanglement)
+      this.particles.slice(i + 1).forEach(other => {
+        const dx = other.x - particle.x;
+        const dy = other.y - particle.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 100) {
+          this.ctx.strokeStyle = `hsla(${(particle.hue + other.hue) / 2}, 70%, 60%, ${0.3 * (1 - dist / 100)})`;
+          this.ctx.lineWidth = 1;
+          this.ctx.beginPath();
+          this.ctx.moveTo(particle.x, particle.y);
+          this.ctx.lineTo(other.x, other.y);
+          this.ctx.stroke();
+        }
+      });
+    });
+
+    this.animationFrame = requestAnimationFrame(() => this.animate());
+  }
+
+  destroy() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame);
+    }
+    window.removeEventListener('resize', () => this.resize());
+    if (this.canvas) {
+      this.canvas.removeEventListener('mousemove', (e) => this.handleMouseMove(e));
+    }
+  }
+}
+
+export default QuantumBackground;
+
+
