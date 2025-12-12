@@ -317,3 +317,4 @@ class CrackInjectionPurpleBackground {
 
 export default CrackInjectionPurpleBackground;
 
+
